@@ -1,0 +1,32 @@
+Just a small task to provision a Proxmox VM joined to FreeIPA.
+
+Typical Playbook usage:
+
+---
+- hosts: <promox host>
+  tasks:
+    - include_role:
+        name: create-proxmox-vm-ubuntu1604-ipa
+      vars:
+        hostname: <hostname>
+        vmid: "{{ hostvars['<hostname>']['proxmox_vmid'] }}"
+        ipa_domain: "{{ ipa_domain_name }}"
+        ipa_username: admin
+        ipa_password: "{{ ipa_admin_password }}"
+        dhcp_dns_domain: "<my DHCP/DNS domain>"
+
+I keep IPA data on group_vars/all/(vars|vault) and proxmox_vmid on
+host_vars/<host>/(vars|vault).
+
+DHCP/DNS domain is required because on first boot, the host gets an ubuntu.fqdn
+hostname and needs to be rebooted to work properly.
+
+I only need a single line in the inventory for each host's hostname, and I put:
+
+ansible_become: True
+ansible_user: <my ipa username>
+
+in the host's variables to connect.
+
+I use DHCP/DNS so IP configuration is automatic and I can access the containers
+using their hostname.

@@ -1,0 +1,76 @@
+---
+- name: check if vm exists
+  shell: "qm list | grep {{ vmid }}"
+  register: check_result
+  ignore_errors: yes
+- name: create vm
+  block:
+  - name: download cloud image qcow2
+    get_url:
+      url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+      dest: /var/local/
+      checksum: sha1:efca334dded07a16748410c3838de40419218956
+  - name: convert image to raw
+    command: "qemu-img convert -O raw /var/local/xenial-server-cloudimg-amd64-disk1.img /var/local/xenial-server-cloudimg-amd64-disk1.raw"
+    args:
+      creates: /var/local/xenial-server-cloudimg-amd64-disk1.raw
+  - name: get image stats
+    stat:
+    args:
+      path: /var/local/xenial-server-cloudimg-amd64-disk1.raw
+    register: image
+  - name: copy rsa key
+    copy:
+    args:
+      src: ~/.ssh/id_rsa.pub
+      dest: /var/local/ansible.pub
+  - name: create disk
+    command: "pvesm alloc local-zfs {{ vmid }} vm-{{ vmid }}-disk-1 {{ image.stat.size // 1024 }}"
+  - name: create cloud init disk
+    command: "pvesm alloc local-zfs {{ vmid }} vm-{{ vmid }}-cloudinit 5M"
+  - name: create vm
+    command: "qm create {{ vmid }} -virtio0 local-zfs:vm-{{ vmid }}-disk-1,size={{ image.stat.size }} --serial0 socket -net0 virtio,bridge=vmbr0 --vga serial0 --sshkey /var/local/ansible.pub --ide2 local-zfs:vm-{{ vmid }}-cloudinit --boot c --bootdisk virtio0 --name {{ hostname }} --ipconfig0 ip=dhcp"
+  - name: init disk
+    command: "dd if=/var/local/xenial-server-cloudimg-amd64-disk1.raw of=/dev/zvol/rpool/data/vm-{{ vmid }}-disk-1"
+  - name: "start (we need to start the machine and reboot for it to get the host name)"
+    command: "qm start {{ vmid }}"
+  - name: wait for ssh
+    wait_for:
+    args:
+      host: "ubuntu.{{ dhcp_dns_domain }}"
+      port: 22
+  - name: shutdown
+    command: "qm shutdown {{ vmid }}"
+  - name: start
+    command: "qm start {{ vmid }}"
+  - name: wait for ssh
+    wait_for:
+    args:
+      host: "{{ hostname }}"
+      port: 22
+  - name: add temporary inventory
+    add_host:
+      name: provisioning
+      ansible_host: "{{ hostname }}"
+      ansible_user: ubuntu
+      ansible_python_interpreter: /usr/bin/python3
+      ansible_become: True
+  - name: wait until apt does its thing
+    pause:
+      minutes: 1
+  - name: update apt
+    command: "apt update"
+    delegate_to: provisioning
+  - name: install freeipa-client
+    apt:
+      name: freeipa-client
+    delegate_to: provisioning
+  - name: join freeipa
+    command: "ipa-client-install -U --domain={{ ipa_domain }} --mkhomedir -w {{ ipa_password }} -p {{ ipa_username }}"
+    delegate_to: provisioning
+  - name: fix mkhomedir  # https://bugs.launchpad.net/ubuntu/+source/freeipa/+bug/1336869
+    lineinfile:
+      path: /etc/pam.d/common-session
+      line: "session required pam_mkhomedir.so skel=/etc/skel/"
+    delegate_to: provisioning
+  when: check_result.rc != 0
