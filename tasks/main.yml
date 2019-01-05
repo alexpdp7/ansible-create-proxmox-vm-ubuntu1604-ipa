@@ -25,11 +25,11 @@
       src: ~/.ssh/id_rsa.pub
       dest: /var/local/ansible.pub
   - name: create disk
-    command: "pvesm alloc local-zfs {{ vmid }} vm-{{ vmid }}-disk-1 {{ image.stat.size // 1024 }}"
+    command: "pvesm alloc local-zfs {{ vmid }} vm-{{ vmid }}-disk-1 {{ disk }}G"
   - name: create cloud init disk
     command: "pvesm alloc local-zfs {{ vmid }} vm-{{ vmid }}-cloudinit 5M"
   - name: create vm
-    command: "qm create {{ vmid }} -virtio0 local-zfs:vm-{{ vmid }}-disk-1,size={{ image.stat.size }} --serial0 socket -net0 virtio,bridge=vmbr0 --vga serial0 --sshkey /var/local/ansible.pub --ide2 local-zfs:vm-{{ vmid }}-cloudinit --boot c --bootdisk virtio0 --name {{ hostname }} --ipconfig0 ip=dhcp"
+    command: "qm create {{ vmid }} -virtio0 local-zfs:vm-{{ vmid }}-disk-1,size={{ disk }}G --serial0 socket -net0 virtio,bridge=vmbr0 --vga serial0 --sshkey /var/local/ansible.pub --ide2 local-zfs:vm-{{ vmid }}-cloudinit --boot c --bootdisk virtio0 --name {{ hostname }} --ipconfig0 ip=dhcp --memory {{ memory }}"
   - name: init disk
     command: "dd if=/var/local/xenial-server-cloudimg-amd64-disk1.raw of=/dev/zvol/rpool/data/vm-{{ vmid }}-disk-1"
   - name: "start (we need to start the machine and reboot for it to get the host name)"
