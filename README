@@ -14,6 +14,8 @@ Typical Playbook usage:
         ipa_username: admin
         ipa_password: "{{ ipa_admin_password }}"
         dhcp_dns_domain: "<my DHCP/DNS domain>"
+        memory: 2048
+        disk: 8
 
 I keep IPA data on group_vars/all/(vars|vault) and proxmox_vmid on
 host_vars/<host>/(vars|vault).
