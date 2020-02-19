@@ -9,7 +9,7 @@
     get_url:
       url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
       dest: /var/local/
-      checksum: sha1:efca334dded07a16748410c3838de40419218956
+      checksum: sha1:86338a5aa0e8027bc8d992d589b0ddf4aa8aefdd
   - name: convert image to raw
     command: "qemu-img convert -O raw /var/local/xenial-server-cloudimg-amd64-disk1.img /var/local/xenial-server-cloudimg-amd64-disk1.raw"
     args:
