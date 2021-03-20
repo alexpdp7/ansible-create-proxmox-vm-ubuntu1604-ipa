@@ -1,3 +1,9 @@
+DEPRECATED, I DON'T USE THIS ANY MORE.
+
+SEE:
+
+https://github.com/alexpdp7/ansible-create-proxmox-host
+
 Just a small task to provision a Proxmox VM joined to FreeIPA.
 
 Typical Playbook usage:
